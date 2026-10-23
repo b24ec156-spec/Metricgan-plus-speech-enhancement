@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MetricGAN+ Speech Enhancement</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5fb;
+            color: #172033;
+        }
+
+        header {
+            background: #101c38;
+            color: white;
+            text-align: center;
+            padding: 30px 15px;
+        }
+
+        header h1 {
+            margin-bottom: 10px;
+        }
+
+        main {
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px #00000010;
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            margin: 18px 0;
+        }
+
+        button, .download {
+            background: #2458d3;
+            color: white;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        audio {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        #status {
+            color: #2458d3;
+            overflow-wrap: anywhere;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>MetricGAN+ Speech Enhancement</h1>
+    <p>AI-Based Background Noise Reduction</p>
+</header>
+
+<main>
+
+    <section class="card">
+        <h2>Upload Noisy Audio</h2>
+        <p>Select a WAV audio file to reduce background noise.</p>
+
+        <input type="file" id="audioFile" accept=".wav,audio/wav">
+
+        <button id="enhanceBtn">Enhance Audio</button>
+
+        <p id="status">Select a WAV file to begin.</p>
+    </section>
+
+    <section class="card">
+        <h2>Original Audio</h2>
+        <audio id="originalPlayer" controls></audio>
+    </section>
+
+    <section class="card hidden" id="resultSection">
+        <h2>Enhanced Audio</h2>
+
+        <audio id="enhancedPlayer" controls></audio>
+
+        <a id="downloadBtn"
+           class="download"
+           download="enhanced_speech.wav">
+            Download Enhanced Audio
+        </a>
+    </section>
+
+</main>
+
+<footer>
+    B.Tech ECE Project | Speech Enhancement using MetricGAN+
+</footer>
+
+<script>
+    const audioFile = document.getElementById("audioFile");
+    const enhanceBtn = document.getElementById("enhanceBtn");
+    const statusText = document.getElementById("status");
+
+    const originalPlayer = document.getElementById("originalPlayer");
+    const enhancedPlayer = document.getElementById("enhancedPlayer");
+    const resultSection = document.getElementById("resultSection");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    let originalURL = null;
+    let enhancedURL = null;
+
+    // Display selected audio
+    audioFile.addEventListener("change", () => {
+        const file = audioFile.files[0];
+
+        if (originalURL) URL.revokeObjectURL(originalURL);
+        if (enhancedURL) URL.revokeObjectURL(enhancedURL);
+
+        originalURL = null;
+        enhancedURL = null;
+
+        originalPlayer.removeAttribute("src");
+        originalPlayer.load();
+
+        enhancedPlayer.removeAttribute("src");
+        enhancedPlayer.load();
+
+        downloadBtn.removeAttribute("href");
+        resultSection.classList.add("hidden");
+
+        if (!file) return;
+
+        if (!file.name.toLowerCase().endsWith(".wav")) {
+            statusText.textContent = "Please select a WAV file.";
+            audioFile.value = "";
+            return;
+        }
+
+        originalURL = URL.createObjectURL(file);
+        originalPlayer.src = originalURL;
+
+        statusText.textContent = "Selected: " + file.name;
+    });
+
+    // Send audio to Python backend
+    enhanceBtn.addEventListener("click", async () => {
+        const file = audioFile.files[0];
+
+        if (!file) {
+            statusText.textContent = "Please select a WAV file first.";
+            return;
+        }
+
+        enhanceBtn.disabled = true;
+        enhanceBtn.textContent = "Enhancing...";
+        statusText.textContent = "Processing audio. Please wait...";
+        resultSection.classList.add("hidden");
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await fetch("/api/enhance", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!response.ok) {
+                let message = "Audio enhancement failed.";
+
+                try {
+                    const error = await response.json();
+                    message = error.detail || message;
+                } catch (_) {}
+
+                throw new Error(message);
+            }
+
+            const audioBlob = await response.blob();
+            enhancedURL = URL.createObjectURL(audioBlob);
+
+            enhancedPlayer.src = enhancedURL;
+            downloadBtn.href = enhancedURL;
+
+            resultSection.classList.remove("hidden");
+            statusText.textContent =
+                "Enhancement complete! Play or download your audio.";
+
+        } catch (error) {
+            statusText.textContent = "Error: " + error.message;
+        } finally {
+            enhanceBtn.disabled = false;
+            enhanceBtn.textContent = "Enhance Audio";
+        }
+    });
+
+    // Check backend connection
+    fetch("/api/health")
+        .then(response => {
+            if (!response.ok) throw new Error("Backend unavailable");
+            return response.json();
+        })
+        .then(() => {
+            statusText.textContent =
+                "Backend ready. Select a WAV file to begin.";
+        })
+        .catch(() => {
+            statusText.textContent =
+                "Start the Python backend to enable enhancement.";
+        });
+</script>
+
+</body>
+</html>
