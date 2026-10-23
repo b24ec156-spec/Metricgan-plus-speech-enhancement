@@ -1,15 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>MetricGAN+ Speech Enhancement</title>
-
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -23,10 +20,6 @@
             color: white;
             text-align: center;
             padding: 30px 15px;
-        }
-
-        header h1 {
-            margin-bottom: 10px;
         }
 
         main {
@@ -75,9 +68,7 @@
             overflow-wrap: anywhere;
         }
 
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
 
         footer {
             text-align: center;
@@ -86,25 +77,19 @@
         }
     </style>
 </head>
-
 <body>
-
 <header>
     <h1>MetricGAN+ Speech Enhancement</h1>
     <p>AI-Based Background Noise Reduction</p>
 </header>
 
 <main>
-
     <section class="card">
         <h2>Upload Noisy Audio</h2>
         <p>Select a WAV audio file to reduce background noise.</p>
-
         <input type="file" id="audioFile" accept=".wav,audio/wav">
-
         <button id="enhanceBtn">Enhance Audio</button>
-
-        <p id="status">Select a WAV file to begin.</p>
+        <p id="status">Checking backend...</p>
     </section>
 
     <section class="card">
@@ -114,27 +99,19 @@
 
     <section class="card hidden" id="resultSection">
         <h2>Enhanced Audio</h2>
-
         <audio id="enhancedPlayer" controls></audio>
-
-        <a id="downloadBtn"
-           class="download"
-           download="enhanced_speech.wav">
+        <a id="downloadBtn" class="download" download="enhanced_speech.wav">
             Download Enhanced Audio
         </a>
     </section>
-
 </main>
 
-<footer>
-    B.Tech ECE Project | Speech Enhancement using MetricGAN+
-</footer>
+<footer>B.Tech ECE Project | Speech Enhancement using MetricGAN+</footer>
 
 <script>
     const audioFile = document.getElementById("audioFile");
     const enhanceBtn = document.getElementById("enhanceBtn");
     const statusText = document.getElementById("status");
-
     const originalPlayer = document.getElementById("originalPlayer");
     const enhancedPlayer = document.getElementById("enhancedPlayer");
     const resultSection = document.getElementById("resultSection");
@@ -143,7 +120,6 @@
     let originalURL = null;
     let enhancedURL = null;
 
-    // Display selected audio
     audioFile.addEventListener("change", () => {
         const file = audioFile.files[0];
 
@@ -155,10 +131,8 @@
 
         originalPlayer.removeAttribute("src");
         originalPlayer.load();
-
         enhancedPlayer.removeAttribute("src");
         enhancedPlayer.load();
-
         downloadBtn.removeAttribute("href");
         resultSection.classList.add("hidden");
 
@@ -172,11 +146,9 @@
 
         originalURL = URL.createObjectURL(file);
         originalPlayer.src = originalURL;
-
         statusText.textContent = "Selected: " + file.name;
     });
 
-    // Send audio to Python backend
     enhanceBtn.addEventListener("click", async () => {
         const file = audioFile.files[0];
 
@@ -191,16 +163,17 @@
         resultSection.classList.add("hidden");
 
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("audio", file);
 
         try {
-            const response = await fetch("/api/enhance", {
+            const response = await fetch("/enhance", {
                 method: "POST",
                 body: formData
             });
 
             if (!response.ok) {
-                let message = "Audio enhancement failed.";
+                let message = "Audio enhancement failed (HTTP " +
+                    response.status + ").";
 
                 try {
                     const error = await response.json();
@@ -212,14 +185,12 @@
 
             const audioBlob = await response.blob();
             enhancedURL = URL.createObjectURL(audioBlob);
-
             enhancedPlayer.src = enhancedURL;
             downloadBtn.href = enhancedURL;
-
             resultSection.classList.remove("hidden");
+
             statusText.textContent =
                 "Enhancement complete! Play or download your audio.";
-
         } catch (error) {
             statusText.textContent = "Error: " + error.message;
         } finally {
@@ -228,8 +199,7 @@
         }
     });
 
-    // Check backend connection
-    fetch("/api/health")
+    fetch("/health")
         .then(response => {
             if (!response.ok) throw new Error("Backend unavailable");
             return response.json();
@@ -240,9 +210,8 @@
         })
         .catch(() => {
             statusText.textContent =
-                "Start the Python backend to enable enhancement.";
+                "Could not connect to the backend. Please refresh.";
         });
 </script>
-
 </body>
 </html>
