@@ -122,12 +122,15 @@ async def enhance_audio(audio: UploadFile = File(...)):
 
 
 # Serve the frontend after defining the API routes.
-if STATIC_DIR.exists():
-    app.mount(
-        "/",
-        StaticFiles(
-            directory=str(STATIC_DIR),
-            html=True
-        ),
-        name="frontend"
-    )
+# Serve the frontend only at the homepage.
+@app.get("/")
+def frontend():
+    index_file = STATIC_DIR / "index.html"
+
+    if not index_file.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Frontend index.html not found"
+        )
+
+    return FileResponse(index_file, media_type="text/html")
